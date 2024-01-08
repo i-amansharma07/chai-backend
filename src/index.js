@@ -1,6 +1,7 @@
 //require('dotenv').config({path : './env'}) breaks the code cosistency of using import statement
 import dotenv from "dotenv" //also make changes inside the package.json script tag (dev)
 import connectDB from "./db/index.js" //somtimes had to mention the extension as well
+import app from './app.js'
 
 dotenv.config({
    path: './env'
@@ -55,4 +56,26 @@ try {
 
 //second apprach (modular approach, connection code is written inside the db/index.js)
 connectDB()
+   .then(() => {
 
+      //mogo db has been connected now start the app
+      initaiteApp()
+
+   }).catch((error) => {
+      console.log('Mongo Db failed to connect!!! : ', error);
+   })
+
+function initaiteApp() {
+   const port = process.env.PORT || 8000;
+
+   //here we first listen to an error event better
+   //to do before listening to port
+   app.on('error', (error) => {
+      console.log('Err : ', error);
+      throw error
+   })
+
+   app.listen(port, () => {
+      console.log(`app is runnig at port : ${process.env.PORT}`);
+   })
+}

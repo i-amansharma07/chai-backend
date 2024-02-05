@@ -92,7 +92,7 @@ userSchema.methods.isPasswordCorrect = async function(password){
 
 // jwt is bearer token, those who have this token(bear the token) that person can access the data, JWT library can make the tokens by taking some inputs
 userSchema.methods.generateAccessToken = function(){
-    // it needs (payloadObj,secretKey,{expireIn : expire time})
+    // it needs (payloadObj,secretKey,{expiresIn : expire time})
    return jwt.sign(
          {
             _id : this._id,
@@ -107,7 +107,7 @@ userSchema.methods.generateAccessToken = function(){
     )
 }
 
-// refresh token is same as access but it's liftime is more and have less info
+// refresh token is same as access but it's liftime is more and have less info than access token
 userSchema.methods.generateRefreshToken = function(){
     return jwt.sign(
         {

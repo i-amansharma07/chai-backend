@@ -20,14 +20,26 @@ app.use(express.json({limit : '16kb'}))
 //extended is used to handle the nested objects
 app.use(express.urlencoded({extended : true,limit : '16kb'}))
 
-
 //to store files like images, pdf, favicons which will be stored inside 
 // the public folder (in case we do such things)
 app.use(express.static('public'))
 
-
-
 //to perform CRUD operations in client's browser
 app.use(cookieParser())
+
+
+// from here we will import our routes
+import userRouter from './routes/user.routes.js'
+
+
+//standard way of routes declaration
+
+//earlier we were directly writing the routes here like app.get() etc.
+//but now as we have separated the router we will use a middleware for routing
+//this is the standard practise like which version of api we are giving.
+app.use('/api/v1/users',userRouter) //control will be passed to userRouter
+
+/* this /users will be prefixed to the route in the router */
+
 
 export default app;

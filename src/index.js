@@ -4,7 +4,7 @@ import connectDB from "./db/index.js" //somtimes had to mention the extension as
 import app from './app.js'
 
 dotenv.config({
-   path: './env'
+   path: './.env'
 })
 
 // mongoose will connect our server with database i.e mongodb

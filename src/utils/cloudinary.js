@@ -25,10 +25,13 @@ const uploadOnCloudinary = async (localFilePath) => {
       resource_type: "auto",
     });
 
+    if(response){
+      fs.unlinkSync(localFilePath)
+    }
     // console.log(response); {will see the response in console in future}
 
     //file as been uploaded successfully
-    console.log("file has been uploaded on cloudinary", response.url);
+    // console.log("file has been uploaded on cloudinary", response.url);
 
     return response;
   } catch (error) {
@@ -37,6 +40,7 @@ const uploadOnCloudinary = async (localFilePath) => {
       which is needed to be removed 
     */
    fs.unlinkSync(localFilePath)
+   console.log(error);
    return null
   }
 };

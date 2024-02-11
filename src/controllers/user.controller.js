@@ -23,7 +23,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
   //step 2 : validaity of fields
   if (
-    [userName, fullName, email, password, avatar, coverImage].some(
+    [userName, fullName, email, password, avatar].some(
       (field) => field?.trim() === ""
     )
   ) {
@@ -32,7 +32,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
   //step 3 : check existing user for email and userName
   //we will use operators here to check two fileds in db
-  const isExisting = User.findOne({
+  const isExisting = await User.findOne({
     $or: [{ userName }, { email }],
   });
 
@@ -43,21 +43,28 @@ const registerUser = asyncHandler(async (req, res) => {
   //step 4 : upload image files to cloudinary
   //here multer has saved the image on our server and will give the filepath of that file
   //console.log(req.file) in future
-  const avatarLocalPath = req?.files?.avatar[0]?.path;
-  const coberLocalPath = req?.files?.coverImage[0]?.path;
+  const avatarLocalPath = await req?.files?.avatar[0]?.path;
+  // const coverLocalPath = await req?.files?.coverImage[0]?.path; // this will cause error while uploading user with no coverImage (core js drawback in optional chaining)
+
+  //below is the more porfessional way of checking the data availability
+  let coverLocalPath;
+  if(req && req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0){
+    coverLocalPath = await req?.files?.coverImage[0]?.path;
+  }
 
   //as avatar is mandatory i.e why we need to check it before uploading
-  if(avatarLocalPath){
+  if(!avatarLocalPath){
     throw new ApiError(400, 'Avatar File is required')
   }
 
   //as we have already written the cloudinary part we can directly use it
-
   const avatarUpload =  await uploadOnCloudinary(avatarLocalPath)
-  if(!avatar){
+
+  if(!avatarUpload){
     throw new ApiError(500,'Something Went Wrong while uploading avatar please try again')
   }
-  const coverImageUpload = await uploadOnCloudinary(coberLocalPath)
+
+  const coverImageUpload = await uploadOnCloudinary(coverLocalPath)
 
 
   //step 5 : storing user in the db with hashed pass (password will be hashed automatically as we have pre hook)
@@ -65,7 +72,7 @@ const registerUser = asyncHandler(async (req, res) => {
     fullName,
     email,
     avatar : avatarUpload.url,
-    coverImage : coverImage?.url || '',
+    coverImage : coverImageUpload?.url || '',
     password,
     userName : userName.toLowerCase()
   })

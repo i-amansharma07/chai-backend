@@ -9,7 +9,7 @@ const userRouter = Router();
 
 //here we have injecting multer middleware just before the registerUser controller to use file
 //inside the request, as body can't have the files. 
-userRouter.route("/register").post(
+userRouter.route("/register").post( //This defines a route for handling POST requests to the "/register" endpoint.
   upload.fields([
     {
       name: "avatar",

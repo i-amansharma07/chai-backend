@@ -21,10 +21,12 @@ const registerUser = asyncHandler(async (req, res) => {
   //step 1 : received all the data from the request body (with object destructuring)
   const { userName, fullName, email, password, avatar, coverImage } = req.body;
 
+  console.log(req.body);
+
   //step 2 : validaity of fields
   if (
     [userName, fullName, email, password, avatar].some(
-      (field) => field?.trim() === ""
+      (field) =>  field?.trim() === undefined || field?.trim() === "" 
     )
   ) {
     throw new ApiError(400, "Please fill all the required fields");

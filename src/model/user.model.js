@@ -76,7 +76,7 @@ const userSchema = new mongoose.Schema({
 //first param - event name, second param - a call back which can't be arrow function due to "this" value inside arrow function (this will be async as it will take some cpu time)
 userSchema.pre("save", async function(next){//next is because it is a middle ware, after doing the task  pass  call next function and pass the responsibility to other middleware 
    if(this.isModified('password')){ // this to only encrypt the pass when the password field is changed (like when creating an account or updating the pass)
-    this.password = bcrypt.hash(this.password,10) //first param is asks for input to be hashed, second param is for number of rounds rounds.
+    this.password = await bcrypt.hash(this.password,10) //first param is asks for input to be hashed, second param is for number of rounds rounds.
    }
     next() //calling the next at the end
 }) 
@@ -120,4 +120,4 @@ userSchema.methods.generateRefreshToken = function(){
    )
 }
 
-export const User = mongoose.Model('User', userSchema);
+export const User = mongoose.model('User', userSchema);

@@ -7,6 +7,8 @@ class ApiResponse {
     }
 }
 
+export default ApiResponse;
+
 // in big companies we get a spec sheet or memo for mapping the statuscode with response
 
 

@@ -44,6 +44,7 @@ const userSchema = new mongoose.Schema({
         unique : true,
         lowercase : true,
         trim : true,
+        index : true 
     },
     avatar: {
         type: String, // cloudinary url will be stored here

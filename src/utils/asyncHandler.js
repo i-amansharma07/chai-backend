@@ -11,6 +11,7 @@ benefits :
 // industry practise uses promises way of doing this
 
 const asyncHandler = (requestHandler) => {
+    
     return (req,res,next) => {
         Promise.resolve(requestHandler(req,res,next))
         .catch(error => next(error))

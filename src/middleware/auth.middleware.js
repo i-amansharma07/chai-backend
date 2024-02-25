@@ -25,7 +25,6 @@ const verifyJwt = asyncHandler(async (req, _ , next) => {
   try {
     //how to access the token -> we will get the cookies from the req object
     //we are getting token either from cookies or header (mobile user)
-    console.log(req);
     const token =
       req.cookies?.accessToken ||
       req.header("Authorization")?.replace("Bearer ", "");

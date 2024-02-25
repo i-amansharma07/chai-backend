@@ -6,7 +6,9 @@ import ApiResponse from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 
 function validateFields(fieldsArray) {
-  fieldsArray.some((field) => field?.trim() === "");
+  return fieldsArray.some(
+    (field) => field?.trim() === "" || typeof field === "undefined"
+  );
 }
 
 //this will be handy in generating the refresh and access token both.
@@ -46,10 +48,10 @@ const registerUser = asyncHandler(async (req, res) => {
   */
 
   //step 1 : received all the data from the request body (with object destructuring)
-  const { userName, fullName, email, password, avatar, coverImage } = req.body;
+  const { userName, fullName, email, password } = req.body;
 
   //step 2 : validaity of fields
-  if (validateFields([userName, fullName, email, password, avatar])) {
+  if (validateFields([userName, fullName, email, password])) {
     throw new ApiError(400, "Please fill all the required fields");
   }
 
@@ -252,7 +254,6 @@ const logoutUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "User LoggedOut Successfully"));
 });
 
-
 // this is the end point where frontend dev will hit to renew their access token which will renew and save refresh token in db as well and return access and refresh token in cookies and response body
 const refreshAccessToken = asyncHandler(async (req, res) => {
   const { refreshToken: incomingRefreshToken } = req.body;
@@ -278,7 +279,6 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     decodedToken._id
   );
 
-
   const options = {
     httpOnly: true,
     secure: true,
@@ -300,4 +300,166 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     );
 });
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken };
+const changeCurrentPassword = asyncHandler(async (req, res) => {
+  const { oldPassword, newPassword } = req.body;
+  const userId = req.user._id;
+
+  if (validateFields([oldPassword, newPassword])) {
+    throw new ApiError("400", "Please fill all the required fields");
+  }
+
+  const user = await User.findById(userId);
+
+  const isPassCorrect = await user.isPasswordCorrect(oldPassword);
+
+  if (!isPassCorrect) {
+    throw new ApiError(
+      401,
+      "Your old Password does not matches, please try again"
+    );
+  }
+
+  user.password = newPassword;
+
+  await user.save({ validateBeforeSave: false });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Password Updated Successfully"));
+});
+
+const getCurrentUser = asyncHandler(async (req, res) => {
+  return res
+    .status(200)
+    .json(new ApiResponse(200, { user: req.user }, "user fetched"));
+});
+
+const updateUserBasicInfo = asyncHandler(async (req, res) => {
+  const { fullName, email } = req.body;
+
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        fullName,
+        email,
+      },
+    },
+    { new: true }
+  ).select("-password -refreshToken");
+
+  console.log(user);
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, { user }, "User Basic Info Updated Successfully")
+    );
+});
+
+// it's a industry practise to let user update text info and file info in diff routes
+// to avoid payload excess size
+const changeAvatar = asyncHandler(async (req, res) => {
+  /*
+   1. receive file from the req object 
+   2. validate the filed.
+   3. upload the filed on cloudinary then get the url for it.
+   4. save the url into avatar property in user object of db.
+   5. return the response with success message. 
+  */
+
+
+  let avatarLocalPath;
+  if (req && req.file) {
+    avatarLocalPath = await req.file.path;
+  } else {
+    throw new ApiError(400, "Please Provide the Avatar Image");
+  }
+
+  const avatarUpload = await uploadOnCloudinary(avatarLocalPath);
+
+  if (!avatarUpload) {
+    throw new ApiError(
+      500,
+      "Something Went Wrong while uploading avatar please try again"
+    );
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        avatar: avatarUpload.url,
+      },
+    },
+    { new: true }
+  );
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        url: user.avatar,
+      },
+      "Avatar Image has been Uploaded"
+    )
+  );
+});
+
+const changeCover = asyncHandler(async (req, res) => {
+  /*
+   1. receive file from the req object 
+   2. validate the filed.
+   3. upload the filed on cloudinary then get the url for it.
+   4. save the url into avatar property in user object of db.
+   5. return the response with success message. 
+  */
+
+
+  let coverLocalPath;
+  if (req && req.file) {
+    coverLocalPath = await req.file.path;
+  } else {
+    throw new ApiError(400, "Please Provide the Avatar Image");
+  }
+
+  const coverUpload = await uploadOnCloudinary(coverLocalPath);
+
+  if (!coverUpload) {
+    throw new ApiError(
+      500,
+      "Something Went Wrong while uploading avatar please try again"
+    );
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        coverImage: coverUpload.url,
+      },
+    },
+    { new: true }
+  );
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        url: user.coverImage,
+      },
+      "Cover image has been Uploaded"
+    )
+  );
+});
+
+export {
+  registerUser,
+  loginUser,
+  logoutUser,
+  refreshAccessToken,
+  changeCurrentPassword,
+  getCurrentUser,
+  updateUserBasicInfo,
+  changeAvatar,
+  changeCover
+};

@@ -150,18 +150,16 @@ const loginUser = asyncHandler(async (req, res) => {
 */
 
   //step 1 :
-  const { userName, email, password } = req.body;
+  const {email, password } = req.body;
 
   //step 2 :
-  if (validateFields([userName, email, password])) {
+  if (validateFields([email, password])) {
     throw new ApiError(400, "Please fill all the required fields");
   }
 
   //step 3 :
   // user can either type UserName or email to login
-  const user = await User.findOne({
-    $or: [{ userName, email }],
-  });
+  const user = await User.findOne({email});
 
   if (!user) {
     throw new ApiError(404, "User with this username or email is not found");

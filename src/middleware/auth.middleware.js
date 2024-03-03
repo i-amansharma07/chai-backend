@@ -39,7 +39,7 @@ const verifyJwt = asyncHandler(async (req, _ , next) => {
 
     //this decoded token is now a simple js object which will have a _id property
     const user = await User.findById(decodedToken?._id).select(
-      "-password -refreshToken"
+      "-password -refreshToken -_id -__v"
     );
 
     if (!user) {

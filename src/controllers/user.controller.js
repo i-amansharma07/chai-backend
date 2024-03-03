@@ -55,6 +55,10 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Please fill all the required fields");
   }
 
+  if (password.length < 8) {
+    throw new ApiError(400, "Password should atleast have  8 characters");
+  }
+
   //step 3 : check existing user for email and userName
   //we will use operators here to check two fileds in db
   const isExisting = await User.findOne({
@@ -150,7 +154,7 @@ const loginUser = asyncHandler(async (req, res) => {
 */
 
   //step 1 :
-  const {email, password } = req.body;
+  const { email, password } = req.body;
 
   //step 2 :
   if (validateFields([email, password])) {
@@ -159,7 +163,7 @@ const loginUser = asyncHandler(async (req, res) => {
 
   //step 3 :
   // user can either type UserName or email to login
-  const user = await User.findOne({email});
+  const user = await User.findOne({ email });
 
   if (!user) {
     throw new ApiError(404, "User with this username or email is not found");
@@ -300,11 +304,12 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
 const changeCurrentPassword = asyncHandler(async (req, res) => {
   const { oldPassword, newPassword } = req.body;
-  const userId = req.user._id;
 
   if (validateFields([oldPassword, newPassword])) {
     throw new ApiError("400", "Please fill all the required fields");
   }
+
+  const userId = req.user._id;
 
   const user = await User.findById(userId);
 
@@ -329,7 +334,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 const getCurrentUser = asyncHandler(async (req, res) => {
   return res
     .status(200)
-    .json(new ApiResponse(200, { user: req.user }, "user fetched"));
+    .json(new ApiResponse(200, { user: req.user }, "User fetched"));
 });
 
 const updateUserBasicInfo = asyncHandler(async (req, res) => {
@@ -346,7 +351,6 @@ const updateUserBasicInfo = asyncHandler(async (req, res) => {
     { new: true }
   ).select("-password -refreshToken");
 
-  console.log(user);
   return res
     .status(200)
     .json(
@@ -364,7 +368,6 @@ const changeAvatar = asyncHandler(async (req, res) => {
    4. save the url into avatar property in user object of db.
    5. return the response with success message. 
   */
-
 
   let avatarLocalPath;
   if (req && req.file) {
@@ -412,7 +415,6 @@ const changeCover = asyncHandler(async (req, res) => {
    5. return the response with success message. 
   */
 
-
   let coverLocalPath;
   if (req && req.file) {
     coverLocalPath = await req.file.path;
@@ -459,5 +461,5 @@ export {
   getCurrentUser,
   updateUserBasicInfo,
   changeAvatar,
-  changeCover
+  changeCover,
 };

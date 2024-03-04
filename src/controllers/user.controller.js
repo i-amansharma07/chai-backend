@@ -372,18 +372,22 @@ const changeAvatar = asyncHandler(async (req, res) => {
   let avatarLocalPath;
   if (req && req.file) {
     avatarLocalPath = await req.file.path;
-  } else {
-    throw new ApiError(400, "Please Provide the Avatar Image");
+  }
+
+  if (!avatarLocalPath) {
+    throw new ApiError(400, "Avatar File is missing");
   }
 
   const avatarUpload = await uploadOnCloudinary(avatarLocalPath);
 
-  if (!avatarUpload) {
+  if (!avatarUpload?.url) {
     throw new ApiError(
       500,
       "Something Went Wrong while uploading avatar please try again"
     );
   }
+
+  /** Assignment  - Here i have to delete the existing image on the cloudinary as we have uploaded a new avatar image for the user */
 
   const user = await User.findByIdAndUpdate(
     req.user._id,
@@ -418,8 +422,10 @@ const changeCover = asyncHandler(async (req, res) => {
   let coverLocalPath;
   if (req && req.file) {
     coverLocalPath = await req.file.path;
-  } else {
-    throw new ApiError(400, "Please Provide the Avatar Image");
+  }
+
+  if (coverLocalPath) {
+    throw new ApiError(400, "Please Provide the Cover Image");
   }
 
   const coverUpload = await uploadOnCloudinary(coverLocalPath);
@@ -452,6 +458,93 @@ const changeCover = asyncHandler(async (req, res) => {
   );
 });
 
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+  const { userName } = req.params;
+
+  if (!userName?.trim()) {
+    throw new ApiError(400, "UserName is missing");
+  }
+
+  // const user = await User.find({userName}); we'll include this in the pipeline only
+
+  // this aggregate function take an array in which each element is a pipeline / stage
+  const userChannelInfo = await User.aggregate([
+    //first pipeline will find the user documnet which will have this userName.
+    {
+      $match: {
+        //match needs a things upon which it matches documnets
+        userName: userName?.toLowerCase(),
+      },
+    },
+    //Now in this pipeline i am getting all the documents where the currentUserId matched with the sub model's channelId
+    //for that we will join / lookup two documents in one the susbs model will be added to users
+    //model but only those model will be added whose condition matches (users which are subsribed to me)
+    {
+      $lookup: {
+        from: "subscriptions", // from which we want to filter
+        localField: "_id",
+        foreignField: "channel",
+        as: "subscribers",
+      },
+    },
+    // to whom i have subsribed
+    {
+      $lookup: "subscriptions",
+      localField: "_id",
+      foreignField: "subscriber",
+      as: "subscribedTo",
+    },
+    // this pipeline will add the fileds to the usersModel so that we can send the data collectively
+    {
+      $addFields: {
+        subscriberCount: {
+          $size: "$subscribers", //used $ as subscribers is now a filed
+        },
+        channelSubscribedToCount: {
+          $size: "$subscribedTo",
+        },
+        //now there is a button on FE where it's wither shows (Subscribe) or (Subscribed)
+        // we will return true or false for that
+        isSubscribed: {
+          $cond: {
+            if: { $in: [req.user?._id, "$subscribers.subscriber"] },
+            then: true,
+            else: false,
+          },
+        },
+      },
+    },
+    //now we will select some specific fields which we need to return as a response
+    {
+      $project: {
+        fullName: 1,
+        userName: 1,
+        subscriberCount: 1,
+        channelSubscribedToCount: 1,
+        isSubscribed: 1,
+        coverImage: 1,
+      },
+    },
+  ]);
+
+  //console log the (userChannelInfo)
+  // this will return a array of object we here we will only have one value userChannelInfo[0] as we have only one user matche with the userName
+
+  if (!userChannelInfo?.length) {
+    throw new ApiError(404, "Channel Does't exists");
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        userChannelInfo[0],
+        "User Channel Info Fetched Successfully"
+      )
+    );
+});
+
 export {
   registerUser,
   loginUser,
@@ -462,4 +555,5 @@ export {
   updateUserBasicInfo,
   changeAvatar,
   changeCover,
+  getUserChannelProfile,
 };

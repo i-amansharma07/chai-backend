@@ -2,6 +2,7 @@ import ApiError from "../utils/ApiError.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import jwt from "jsonwebtoken";
 import { User } from "../model/user.model.js";
+import {structuredError} from '../utils/utilFunctions.js'
 
 /* 
   Need of this MiddleWare ?
@@ -21,7 +22,7 @@ import { User } from "../model/user.model.js";
 
 */
 
-const verifyJwt = asyncHandler(async (req, _ , next) => {
+const verifyJwt = asyncHandler(async (req, res , next) => {
   try {
     //how to access the token -> we will get the cookies from the req object
     //we are getting token either from cookies or header (mobile user)
@@ -31,7 +32,8 @@ const verifyJwt = asyncHandler(async (req, _ , next) => {
 
 
     if (!token) {
-      throw new ApiError(401, "Unauthorized request");
+      const error = new ApiError(495, "Unauthorized request");
+      return structuredError(res, error)
     }
 
     // if token is present now we need to verify whether the token is valid with db token or not
@@ -39,22 +41,24 @@ const verifyJwt = asyncHandler(async (req, _ , next) => {
 
     //this decoded token is now a simple js object which will have a _id property
     const user = await User.findById(decodedToken?._id).select(
-      "-password -refreshToken -_id -__v"
+      "-password -refreshToken -__v"
     );
 
     if (!user) {
-      throw new ApiError(401, "Invalid Access Token");
+      const error =  new ApiError(401, "Invalid Access Token");
+      return structuredError(res, error)
     }
 
     //now we add a user property to the request body
     req.user = user;
     //now we call the next middleware
     next();
-  } catch (error) {
-    throw new ApiError(
+  } catch (catchError) {
+    const error =  new ApiError(
       401,
-      error?.message || "Something went wrong while verifying User"
+      catchError?.message || "Something went wrong while verifying User"
     );
+    return structuredError(res, error)
   }
 });
 

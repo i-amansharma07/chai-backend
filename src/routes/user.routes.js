@@ -9,6 +9,7 @@ import {
   updateUserBasicInfo,
   changeAvatar,
   changeCover,
+  otpValidation
 } from "../controllers/user.controller.js";
 import { upload } from "../middleware/multer.middleware.js"; //for adding the file handling functionality
 import { verifyJwt } from "../middleware/auth.middleware.js";
@@ -36,6 +37,8 @@ userRouter.route("/register").post(
 );
 
 userRouter.route("/login").post(loginUser);
+
+userRouter.route("/verify_otp").post(otpValidation);
 
 // protected(secured) routes [when user is logged in]
 

@@ -4,7 +4,8 @@ import { User } from "../model/user.model.js"; //this User will talk with mongoD
 import uploadOnCloudinary from "../utils/cloudinary.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
-import {structuredError} from '../utils/utilFunctions.js'
+import { structuredError } from "../utils/utilFunctions.js";
+import nodemailer from 'nodemailer'
 
 function validateFields(fieldsArray) {
   return fieldsArray.some(
@@ -34,8 +35,6 @@ async function generateAccessAndRefreshTokens(userId) {
   }
 }
 
-
-
 //this method will only register the user
 const registerUser = asyncHandler(async (req, res) => {
   /*
@@ -57,13 +56,16 @@ const registerUser = asyncHandler(async (req, res) => {
 
   //step 2 : validaity of fields
   if (validateFields([userName, fullName, email, password])) {
-    const error =  new ApiError(400, "Please fill all the required fields");
-    return structuredError(res, error)
+    const error = new ApiError(400, "Please fill all the required fields");
+    return structuredError(res, error);
   }
 
   if (password.length < 8) {
-    const error =  new ApiError(400, "Password should atleast have  8 characters");
-    return structuredError(res, error)
+    const error = new ApiError(
+      400,
+      "Password should atleast have  8 characters"
+    );
+    return structuredError(res, error);
   }
 
   //step 3 : check existing user for email and userName
@@ -73,8 +75,8 @@ const registerUser = asyncHandler(async (req, res) => {
   });
 
   if (isExisting) {
-    const error =  new ApiError(409, "This username or email is already taken");
-    return structuredError(res, error)
+    const error = new ApiError(409, "This username or email is already taken");
+    return structuredError(res, error);
   }
 
   //step 4 : upload image files to cloudinary
@@ -105,20 +107,20 @@ const registerUser = asyncHandler(async (req, res) => {
 
   //as avatar is mandatory i.e why we need to check it before uploading
   if (!avatarLocalPath) {
-    const error =  new ApiError(400, "Avatar File is required");
-    return structuredError(res, error)
+    const error = new ApiError(400, "Avatar File is required");
+    return structuredError(res, error);
   }
 
   //as we have already written the cloudinary part we can directly use it
   const avatarUpload = await uploadOnCloudinary(avatarLocalPath);
 
   if (!avatarUpload) {
-    const error =  new ApiError(
+    const error = new ApiError(
       500,
       "Something Went Wrong while uploading avatar please try again"
     );
 
-    return structuredError(res, error)
+    return structuredError(res, error);
   }
 
   const coverImageUpload = await uploadOnCloudinary(coverLocalPath);
@@ -141,8 +143,11 @@ const registerUser = asyncHandler(async (req, res) => {
   );
 
   if (!createdUser) {
-    const error =  new ApiError(500, "Something went wrong while registering the user");
-    return structuredError(res, error)
+    const error = new ApiError(
+      500,
+      "Something went wrong while registering the user"
+    );
+    return structuredError(res, error);
   }
 
   //step 8 : returning the response to the user by our ApiResponse class.
@@ -170,8 +175,8 @@ const loginUser = asyncHandler(async (req, res) => {
 
   //step 2 :
   if (validateFields([email, password])) {
-    const error =  new ApiError(400, "Please fill all the required fields");
-    return structuredError(res, error)
+    const error = new ApiError(400, "Please fill all the required fields");
+    return structuredError(res, error);
   }
 
   //step 3 :
@@ -179,8 +184,8 @@ const loginUser = asyncHandler(async (req, res) => {
   const user = await User.findOne({ email });
 
   if (!user) {
-    const error =  new ApiError(404, "User with this email is not found");
-    return structuredError(res, error)
+    const error = new ApiError(404, "User with this email is not found");
+    return structuredError(res, error);
   }
 
   //step 4 :
@@ -188,9 +193,61 @@ const loginUser = asyncHandler(async (req, res) => {
   const isPassCorrect = await user.isPasswordCorrect(password);
 
   if (!isPassCorrect) {
-    const error =  new ApiError(401, "The entered password does not matches");
-    return structuredError(res, error)
+    const error = new ApiError(401, "The entered password does not matches");
+    return structuredError(res, error);
   }
+
+  //sending OTP from here
+  const transporter = nodemailer.createTransport({
+    host: 'smtp.ethereal.email',
+    port: 587,
+    auth: {
+        user: 'chad35@ethereal.email',
+        pass: 'RJ4Vr4Shjz3gvUrSzY'
+    }
+});
+
+
+  const sendMail = await transporter.sendMail({
+    from: 'chai-backend <noreply@gmail.com>', // sender address
+    to: email, // list of receivers
+    subject: "OTP", // Subject line
+    text: `Your OTP number is  : ${123456}`, // plain text body
+    html: "<b>Hey There</b>", // html body`
+  });
+
+
+  if(!sendMail?.messageId){
+    const error = new ApiError(500, "Error occured while generating OTP");
+    return structuredError(res, error);
+  }
+
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,{},
+        "Otp Sent to mail Successfully"
+      )
+    );
+});
+
+const otpValidation = asyncHandler(async (req, res) => {
+
+  const {email, otp} = req.body
+
+  if(!otp){
+    const error =  new ApiError(400, "Otp is required");
+    return structuredError(res, error);
+  }
+
+  if(!otp==='12345'){
+    const error =  new ApiError(400, "Otp in incorrect");
+    return structuredError(res, error);
+  }
+
+  const user = await User.findOne({ email });
 
   //step 5 :
   //this operation may need some time so we need to await this
@@ -268,16 +325,16 @@ const logoutUser = asyncHandler(async (req, res) => {
     .status(200)
     .clearCookie("accessToken", options)
     .clearCookie("refreshToken", options)
-    .json(new ApiResponse(200, {}, "User LoggedOut Successfully"));
+    .json(new ApiResponse(200, {}, "User Loggedout Successfully"));
 });
- 
+
 // this is the end point where frontend dev will hit to renew their access token which will renew and save refresh token in db as well and return access and refresh token in cookies and response body
 const refreshAccessToken = asyncHandler(async (req, res) => {
   const { refreshToken: incomingRefreshToken } = req.body;
 
   if (!incomingRefreshToken) {
-    const error =  new ApiError(400, "Refresh Token Not Found");
-    return structuredError(res, error)
+    const error = new ApiError(400, "Refresh Token Not Found");
+    return structuredError(res, error);
   }
 
   const decodedToken = jwt.verify(
@@ -288,8 +345,8 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   const user = await User.findById(decodedToken._id);
 
   if (incomingRefreshToken !== user.refreshToken) {
-    const error =  new ApiError(400, "Refresh Token Invalid");
-    return structuredError(res, error)
+    const error = new ApiError(400, "Refresh Token Invalid");
+    return structuredError(res, error);
   }
 
   // console.log(decodedToken._id);
@@ -323,8 +380,8 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
   const { oldPassword, newPassword } = req.body;
 
   if (validateFields([oldPassword, newPassword])) {
-    const error =  new ApiError("400", "Please fill all the required fields");
-    return structuredError(res, error)
+    const error = new ApiError("400", "Please fill all the required fields");
+    return structuredError(res, error);
   }
 
   const userId = req.user._id;
@@ -334,11 +391,11 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
   const isPassCorrect = await user.isPasswordCorrect(oldPassword);
 
   if (!isPassCorrect) {
-    const error =  new ApiError(
+    const error = new ApiError(
       401,
       "Your old Password does not matches, please try again"
     );
-    return structuredError(res, error)
+    return structuredError(res, error);
   }
 
   user.password = newPassword;
@@ -351,7 +408,6 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 });
 
 const getCurrentUser = asyncHandler(async (req, res) => {
-
   return res
     .status(200)
     .json(new ApiResponse(200, { user: req.user }, "User fetched"));
@@ -395,18 +451,18 @@ const changeAvatar = asyncHandler(async (req, res) => {
   }
 
   if (!avatarLocalPath) {
-    const error =  new ApiError(400, "Avatar File is missing");
-    return structuredError(res, error)
+    const error = new ApiError(400, "Avatar File is missing");
+    return structuredError(res, error);
   }
 
   const avatarUpload = await uploadOnCloudinary(avatarLocalPath);
 
   if (!avatarUpload?.url) {
-    const error =  new ApiError(
+    const error = new ApiError(
       500,
       "Something Went Wrong while uploading avatar please try again"
     );
-    return structuredError(res, error)
+    return structuredError(res, error);
   }
 
   /** Assignment  - Here i have to delete the existing image on the cloudinary as we have uploaded a new avatar image for the user */
@@ -447,18 +503,18 @@ const changeCover = asyncHandler(async (req, res) => {
   }
 
   if (coverLocalPath) {
-    const error =  new ApiError(400, "Please Provide the Cover Image");
-    return structuredError(res, error)
+    const error = new ApiError(400, "Please Provide the Cover Image");
+    return structuredError(res, error);
   }
 
   const coverUpload = await uploadOnCloudinary(coverLocalPath);
 
   if (!coverUpload) {
-    const error =  new ApiError(
+    const error = new ApiError(
       500,
       "Something Went Wrong while uploading avatar please try again"
     );
-    return structuredError(res, error)
+    return structuredError(res, error);
   }
 
   const user = await User.findByIdAndUpdate(
@@ -486,8 +542,8 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
   const { userName } = req.params;
 
   if (!userName?.trim()) {
-    const error =  new ApiError(400, "UserName is missing");
-    return structuredError(res, error)
+    const error = new ApiError(400, "UserName is missing");
+    return structuredError(res, error);
   }
 
   // const user = await User.find({userName}); we'll include this in the pipeline only
@@ -556,8 +612,8 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
   // this will return a array of object we here we will only have one value userChannelInfo[0] as we have only one user matche with the userName
 
   if (!userChannelInfo?.length) {
-    const error =  new ApiError(404, "Channel Does't exists");
-    return structuredError(res, error)
+    const error = new ApiError(404, "Channel Does't exists");
+    return structuredError(res, error);
   }
 
   return res
@@ -571,11 +627,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     );
 });
 
-
-const getUserWatchHistory = asyncHandler(async(req, res)=>{
-
-})
-
+const getUserWatchHistory = asyncHandler(async (req, res) => {});
 
 export {
   registerUser,
@@ -588,4 +640,5 @@ export {
   changeAvatar,
   changeCover,
   getUserChannelProfile,
+  otpValidation
 };

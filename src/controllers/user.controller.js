@@ -223,6 +223,11 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 
 
+  user.otp = '12345'
+
+  await user.save({ validateBeforeSave: false });
+
+
   return res
     .status(200)
     .json(
@@ -237,17 +242,31 @@ const otpValidation = asyncHandler(async (req, res) => {
 
   const {email, otp} = req.body
 
-  if(!otp){
+  if(validateFields[email, otp]){
+    const error = new ApiError(400, "Fill all the required fields")
+    return structuredError(res, error)
+  }
+
+  const user = await User.findOne({ email });
+  const dbOtp = user?.otp
+
+
+  if(!dbOtp){
+    const error = new ApiError(500,"otp not found in db");
+    return structuredError(res, error)
+  }
+
+  if(!dbOtp){
     const error =  new ApiError(400, "Otp is required");
     return structuredError(res, error);
   }
 
-  if(!otp==='12345'){
+  if(otp!==dbOtp){
     const error =  new ApiError(400, "Otp in incorrect");
     return structuredError(res, error);
   }
 
-  const user = await User.findOne({ email });
+
 
   //step 5 :
   //this operation may need some time so we need to await this

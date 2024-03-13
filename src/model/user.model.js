@@ -57,6 +57,9 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: [true,'Password is required'], //custom msg
     },
+    otp : {
+        type : String 
+    },
     refreshToken: {
         type: String,
         // required: true,

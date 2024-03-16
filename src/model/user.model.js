@@ -64,12 +64,19 @@ const userSchema = new mongoose.Schema({
         type: String,
         // required: true,
     },
+    // watchHistory :[
+    //     {
+    //         type : Schema.Types.ObjectId,
+    //         ref : 'Video'
+    //     }
+    // ]
     watchHistory :[
         {
-            type : Schema.Types.ObjectId,
-            ref : 'Video'
+            type : String,
+            
         }
     ]
+
 
 }, { timestamps: true });
 

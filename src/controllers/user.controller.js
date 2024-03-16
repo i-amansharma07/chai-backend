@@ -521,7 +521,7 @@ const changeCover = asyncHandler(async (req, res) => {
     coverLocalPath = await req.file.path;
   }
 
-  if (coverLocalPath) {
+  if (!coverLocalPath) {
     const error = new ApiError(400, "Please Provide the Cover Image");
     return structuredError(res, error);
   }

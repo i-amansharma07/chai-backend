@@ -37,6 +37,7 @@ app.use(cookieParser());
 
 // from here we will import our routes
 import userRouter from "./routes/user.routes.js";
+import videoRouter from "./routes/video.routes.js";
 
 //standard way of routes declaration
 
@@ -46,5 +47,8 @@ import userRouter from "./routes/user.routes.js";
 app.use("/api/v1/users", userRouter); //control will be passed to userRouter
 
 /* this /users will be prefixed to the route in the router */
+
+app.use("/api/v1/video", videoRouter)
+
 
 export default app;

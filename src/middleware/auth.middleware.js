@@ -32,7 +32,7 @@ const verifyJwt = asyncHandler(async (req, res , next) => {
 
 
     if (!token) {
-      const error = new ApiError(495, "Unauthorized request");
+      const error = new ApiError(401, "Unauthorized request");
       return structuredError(res, error)
     }
 

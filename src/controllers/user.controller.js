@@ -5,7 +5,8 @@ import uploadOnCloudinary from "../utils/cloudinary.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 import { structuredError } from "../utils/utilFunctions.js";
-import nodemailer from 'nodemailer'
+import nodemailer from "nodemailer";
+import mongoose from "mongoose";
 
 function validateFields(fieldsArray) {
   return fieldsArray.some(
@@ -199,74 +200,61 @@ const loginUser = asyncHandler(async (req, res) => {
 
   //sending OTP from here
   const transporter = nodemailer.createTransport({
-    host: 'smtp.ethereal.email',
+    host: "smtp.ethereal.email",
     port: 587,
     auth: {
-        user: 'chad35@ethereal.email',
-        pass: 'RJ4Vr4Shjz3gvUrSzY'
-    }
-});
-
+      user: "chad35@ethereal.email",
+      pass: "RJ4Vr4Shjz3gvUrSzY",
+    },
+  });
 
   const sendMail = await transporter.sendMail({
-    from: 'chai-backend <noreply@gmail.com>', // sender address
+    from: "chai-backend <noreply@gmail.com>", // sender address
     to: email, // list of receivers
     subject: "OTP", // Subject line
     text: `Your OTP number is  : ${123456}`, // plain text body
     html: "<b>Hey There</b>", // html body`
   });
 
-
-  if(!sendMail?.messageId){
+  if (!sendMail?.messageId) {
     const error = new ApiError(500, "Error occured while generating OTP");
     return structuredError(res, error);
   }
 
-
-  user.otp = '12345'
+  user.otp = "12345";
 
   await user.save({ validateBeforeSave: false });
 
-
   return res
     .status(200)
-    .json(
-      new ApiResponse(
-        200,{},
-        "Otp Sent to mail Successfully"
-      )
-    );
+    .json(new ApiResponse(200, {}, "Otp Sent to mail Successfully"));
 });
 
 const otpValidation = asyncHandler(async (req, res) => {
+  const { email, otp } = req.body;
 
-  const {email, otp} = req.body
-
-  if(validateFields[email, otp]){
-    const error = new ApiError(400, "Fill all the required fields")
-    return structuredError(res, error)
+  if (validateFields[(email, otp)]) {
+    const error = new ApiError(400, "Fill all the required fields");
+    return structuredError(res, error);
   }
 
   const user = await User.findOne({ email });
-  const dbOtp = user?.otp
+  const dbOtp = user?.otp;
 
-
-  if(!dbOtp){
-    const error = new ApiError(500,"otp not found in db");
-    return structuredError(res, error)
-  }
-
-  if(!dbOtp){
-    const error =  new ApiError(400, "Otp is required");
+  if (!dbOtp) {
+    const error = new ApiError(500, "otp not found in db");
     return structuredError(res, error);
   }
 
-  if(otp!==dbOtp){
-    const error =  new ApiError(400, "Otp in incorrect");
+  if (!dbOtp) {
+    const error = new ApiError(400, "Otp is required");
     return structuredError(res, error);
   }
 
-
+  if (otp !== dbOtp) {
+    const error = new ApiError(400, "Otp in incorrect");
+    return structuredError(res, error);
+  }
 
   //step 5 :
   //this operation may need some time so we need to await this
@@ -646,11 +634,77 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     );
 });
 
-const getUserWatchHistory = asyncHandler(async (req, res) => {});
+const getUserWatchHistory = asyncHandler(async (req, res) => {
+  const user = await User.aggregate([
+    {
+      $match: {
+        // converting id string into mongo db object id  as the whole pipeline goes into mongo db
+        _id: new mongoose.Types.ObjectId(req.user._id),
+      },
+    },
+    {
+      $lookup: {
+        from: "videos",
+        localField: "watchHistory",
+        foreignField: "_id",
+        as: "watchHistory",
+        //subpipeline is needed as the owner filed will
+        //not have anything inside it except the id of the owner
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "owner",
+              // we want to give only selected user details in
+              // the owner's filed so another pipeline in a sub pipeline
+              pipeline: [
+                {
+                  $project: {
+                    fullName: 1,
+                    userName: 1,
+                    avatar: 1,
+                  },
+                },
+              ],
+            },
+          },
+          // in the above pipeline we have added the user details inside the owner filed like
+          // owner[0] and access things like owner[0].fullName but we want it to be like owner.fullName
+          {
+            $addFields: {
+              //to overwrite existing filed of the object
+              owner: {
+                $first: "$owner",
+              },
+            },
+          },
+        ],
+      },
+    },
+  ]);
+
+  if (!user?.length) {
+    const error = new ApiError(404, "Error fetching watch history");
+    return structuredError(res, error);
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        user[0].watchHistory,
+        "Watch historyfetched successfully"
+      )
+    );
+});
 
 export {
   registerUser,
   loginUser,
+  otpValidation,
   logoutUser,
   refreshAccessToken,
   changeCurrentPassword,
@@ -659,5 +713,5 @@ export {
   changeAvatar,
   changeCover,
   getUserChannelProfile,
-  otpValidation
+  getUserWatchHistory
 };

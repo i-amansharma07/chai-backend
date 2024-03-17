@@ -41,7 +41,6 @@ userRouter.route("/login").post(loginUser);
 userRouter.route("/verify_otp").post(otpValidation);
 
 // protected(secured) routes [when user is logged in]
-
 //express will give (req,res,next) params to each function inside the post method
 userRouter.route("/logout").post(verifyJwt, logoutUser);
 

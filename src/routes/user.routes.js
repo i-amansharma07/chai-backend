@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   registerUser,
   loginUser,
+  otpValidation,
   logoutUser,
   refreshAccessToken,
   changeCurrentPassword,
@@ -9,7 +10,8 @@ import {
   updateUserBasicInfo,
   changeAvatar,
   changeCover,
-  otpValidation
+  getUserChannelProfile,
+  getUserWatchHistory
 } from "../controllers/user.controller.js";
 import { upload } from "../middleware/multer.middleware.js"; //for adding the file handling functionality
 import { verifyJwt } from "../middleware/auth.middleware.js";
@@ -36,12 +38,12 @@ userRouter.route("/register").post(
   registerUser
 );
 
+//express will give (req,res,next) params to each function inside the post method
 userRouter.route("/login").post(loginUser);
 
 userRouter.route("/verify_otp").post(otpValidation);
 
-// protected(secured) routes [when user is logged in]
-//express will give (req,res,next) params to each function inside the post method
+/******  protected(secured) routes [when user is logged in] ******/
 userRouter.route("/logout").post(verifyJwt, logoutUser);
 
 userRouter.route("/refresh_access_token").post(refreshAccessToken);
@@ -50,17 +52,27 @@ userRouter.route("/change_password").post(verifyJwt, changeCurrentPassword);
 
 userRouter.route("/get_current_user").get(verifyJwt, getCurrentUser);
 
+//patch request as we want to update only some fileds not the entire document
 userRouter
   .route("/update_user_basic_info")
-  .post(verifyJwt, updateUserBasicInfo);
+  .patch(verifyJwt, updateUserBasicInfo);
 
 userRouter
   .route("/change_avatar")
-  .post(upload.single("avatar"), verifyJwt, changeAvatar);
+  .patch(upload.single("avatar"), verifyJwt, changeAvatar);
 
 userRouter
   .route("/change_cover")
-  .post(upload.single("coverImage"), verifyJwt, changeCover);
+  .patch(upload.single("coverImage"), verifyJwt, changeCover);
+
+//giviing user name in params  
+userRouter
+.route("/channel/:userName")  
+.get(verifyJwt, getUserChannelProfile)
+
+userRouter
+.route("/watch-history")
+.get(verifyJwt, getUserWatchHistory)
 
 export default userRouter;
 
